@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 4px;
+            margin-top: 4px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Add Employee Record</h2>
+
+    <form id="employeeForm">
+        <label>Employee Name:
+            <input type="text" name="employeeName" required>
+        </label>
+        <label>Salary:
+            <input type="number" name="salary" required>
+        </label>
+        <label>Designation:
+            <input type="text" name="designation" required>
+        </label>
+        <label>Date Joined:
+            <input type="date" name="dateJoined" required>
+        </label>
+        <label>Status:
+            <select name="status">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+            </select>
+        </label>
+        <label>Salary Received:
+            <select name="salaryReceived">
+                <option value="Not Received">Not Received</option>
+                <option value="Received">Received</option>
+            </select>
+        </label>
+        <button type="submit">Submit Employee</button>
+    </form>
+
+    <script>
+        document.getElementById('employeeForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var form = e.target;
+            var record = {
+                employeeName: form.employeeName.value,
+                salary: form.salary.value,
+                designation: form.designation.value,
+                dateJoined: form.dateJoined.value,
+                status: form.status.value,
+                salaryReceived: form.salaryReceived.value
+            };
+            google.script.run.withSuccessHandler(function (response) {
+                alert(response.message);
+                form.reset();
+            }).addEmployeeRecord(record);
+        });
+    </script>
+</body>
+
+</html>

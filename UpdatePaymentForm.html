@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 4px;
+            margin-top: 4px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Mark Payment as Received</h2>
+
+    <!-- Dropdown to select a pending invoice -->
+    <label>Select Invoice (Pending):
+        <select id="invoiceSelect">
+            <option value="">--Select Invoice--</option>
+        </select>
+    </label>
+
+    <!-- Date selection -->
+    <label>Date of Payment:
+        <input type="date" id="paymentDate" required>
+    </label>
+
+    <!-- Submit button -->
+    <button id="submitBtn">Mark as Received</button>
+
+    <script>
+        // Load pending invoices when the page loads
+        function loadPendingInvoices() {
+            google.script.run.withSuccessHandler(function (response) {
+                if (response.status === 'success') {
+                    var select = document.getElementById('invoiceSelect');
+                    select.innerHTML = '<option value="">--Select Invoice--</option>'; // Clear old options
+                    response.invoices.forEach(function (inv) {
+                        var opt = document.createElement('option');
+                        opt.value = inv;
+                        opt.text = inv;
+                        select.add(opt);
+                    });
+                } else {
+                    alert("Error fetching pending invoices: " + response.message);
+                }
+            }).getPendingInvoices();
+        }
+
+        loadPendingInvoices();
+
+        // Handle form submission
+        document.getElementById('submitBtn').addEventListener('click', function () {
+            var invoiceNumber = document.getElementById('invoiceSelect').value;
+            var paymentDate = document.getElementById('paymentDate').value;
+
+            if (!invoiceNumber) {
+                alert("Please select an invoice.");
+                return;
+            }
+
+            if (!paymentDate) {
+                alert("Please select a payment date.");
+                return;
+            }
+
+            // Send update request to Apps Script
+            google.script.run.withSuccessHandler(function (response) {
+                alert(response.message);
+                loadPendingInvoices(); // Refresh dropdown
+            }).markPaymentAsReceived(invoiceNumber, paymentDate);
+        });
+    </script>
+</body>
+
+</html>

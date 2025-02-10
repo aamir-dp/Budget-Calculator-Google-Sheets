@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: auto;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .info-box {
+            background: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin-top: 15px;
+            cursor: pointer;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Dashboard</h2>
+
+        <div class="info-box">
+            <h3>Running Total</h3>
+            <p id="runningTotal">Loading...</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Partner Share (%)</h3>
+            <p id="partnerShare">Loading...</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Partner Share Amount</h3>
+            <p id="partnerShareAmount">Loading...</p>
+        </div>
+
+        <!-- Refresh Button -->
+        <button id="refreshBtn">Refresh</button>
+    </div>
+
+    <script>
+        function loadDashboardData() {
+            google.script.run.withSuccessHandler(function (response) {
+                if (response.status === 'success') {
+                    document.getElementById("runningTotal").innerText = "PKR " + response.runningTotal;
+                    document.getElementById("partnerShare").innerText = response.partnerShare + "%";
+                    document.getElementById("partnerShareAmount").innerText = "PKR " + response.partnerShareAmount;
+                } else {
+                    alert("Error fetching dashboard data: " + response.message);
+                }
+            }).refreshDashboard();
+        }
+
+        // Load data when the page loads
+        loadDashboardData();
+
+        // Refresh button event listener
+        document.getElementById("refreshBtn").addEventListener("click", function () {
+            loadDashboardData(); // Reload data when clicked
+        });
+    </script>
+</body>
+
+</html>

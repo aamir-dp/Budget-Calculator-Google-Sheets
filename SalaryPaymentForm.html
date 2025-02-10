@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+        }
+
+        .checkbox-group {
+            margin: 10px 0;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Salary Payment Form</h2>
+
+    <form id="salaryForm">
+        <div class="checkbox-group" id="employeeList">
+            <p>Loading active employees...</p>
+        </div>
+
+        <button type="submit">Deduct Salaries</button>
+    </form>
+
+    <script>
+        function loadActiveEmployees() {
+            google.script.run.withSuccessHandler(function (employees) {
+                console.log("Active Employees Data:", employees); // Debugging Log
+                var employeeDiv = document.getElementById("employeeList");
+
+                if (!employees || !Array.isArray(employees) || employees.length === 0) {
+                    employeeDiv.innerHTML = "<p>No active employees found.</p>";
+                    return;
+                }
+
+                employeeDiv.innerHTML = ""; // Clear previous list
+                employees.forEach(function (emp) {
+                    var label = document.createElement("label");
+                    var checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.name = "employees";
+                    checkbox.value = emp.name; // Employee name (to identify)
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(` ${emp.name} - PKR ${emp.salary} (Joined: ${emp.dateJoined})`));
+                    employeeDiv.appendChild(label);
+                });
+            }).getActiveEmployees();
+        }
+
+        document.getElementById("salaryForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            var checkboxes = document.querySelectorAll("input[name='employees']:checked");
+            var selectedEmployees = [];
+
+            checkboxes.forEach(function (checkbox) {
+                selectedEmployees.push(checkbox.value);
+            });
+
+            if (selectedEmployees.length === 0) {
+                alert("Please select at least one employee.");
+                return;
+            }
+
+            google.script.run.withSuccessHandler(function (response) {
+                alert(response.message);
+                loadActiveEmployees(); // Refresh list after payment
+            }).processSelectedSalaries(selectedEmployees);
+        });
+
+        // Load employee list on page load
+        loadActiveEmployees();
+    </script>
+</body>
+
+</html>
