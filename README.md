@@ -1,4 +1,4 @@
-# **📌 Google Sheets Accounting System - README**
+# **📌 Google Sheets Accounting System**
 
 ## **📖 Overview**
 This project is a **Google Sheets-based Accounting System** built using **Google Apps Script**. It allows users to:
