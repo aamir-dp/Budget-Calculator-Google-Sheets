@@ -13,8 +13,27 @@ function onOpen() {
         .addItem('Add Expense Record', 'showExpenseForm')
         .addItem('Pay Unpaid Expenses', 'payUnpaidExpenses')
         .addItem('Update Payment Record', 'showUpdatePaymentForm')
+        .addSeparator()
+        .addItem('Add Month Headings', 'addMonthHeadings') // ✅ New function in UI
+        .addItem('Generate Monthly Summary', 'showFinancialSummaryForm') // ✅ New function in UI
         .addToUi();
 }
+
+// function onEdit(e) {
+//     var sheet = e.source.getSheetByName('Payments'); // Adjust to your sheet
+//     if (sheet) {
+//         addMonthHeadings();
+//     }
+// }
+
+
+function showFinancialSummaryForm() {
+    var html = HtmlService.createHtmlOutputFromFile('FinancialSummaryForm')
+        .setWidth(400)
+        .setHeight(300);
+    SpreadsheetApp.getUi().showModalDialog(html, "Generate Monthly Summary");
+}
+
 
 function showSalaryPaymentForm() {
     var html = HtmlService.createHtmlOutputFromFile('SalaryPaymentForm')
@@ -48,37 +67,72 @@ function showEmployeeForm() {
     SpreadsheetApp.getUi().showSidebar(html);
 }
 
+// function addPaymentRecord(record) {
+//     try {
+//         var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+//         var sheet = ss.getSheetByName('Payments');
+//         if (!sheet) {
+//             throw new Error("Sheet 'Payments' not found.");
+//         }
+
+//         // Get the foreign currency amount and selected currency.
+//         var totalPaymentFC = parseFloat(record.totalPaymentFC) || 0;
+//         var currency = record.currency.toUpperCase();
+
+//         // Build the formula for "Total Payment Received PKR" (Column J).
+//         var totalPaymentPKRFormula = "";
+//         if (currency === "PKR") {
+//             totalPaymentPKRFormula = "=" + totalPaymentFC + "*1";
+//         } else {
+//             totalPaymentPKRFormula = "=" + totalPaymentFC + "*GOOGLEFINANCE(\"CURRENCY:" + currency + "PKR\")";
+//         }
+
+//         // Build the new row array matching the sheet columns:
+//         // 1. Invoice Number  
+//         // 2. Date of Invoice  
+//         // 3. Date of Payment  
+//         // 4. Client Name  
+//         // 5. Job Description  
+//         // 6. Payment Account  
+//         // 7. Payment Status  
+//         // 8. Currency  
+//         // 9. Total Payment Received F.C  
+//         // 10. Total Payment Received PKR (formula)
+//         var newRow = [
+//             record.invoiceNumber,
+//             record.invoiceDate,
+//             record.paymentDate,
+//             record.clientName,
+//             record.jobDescription,
+//             record.paymentAccount,
+//             record.paymentStatus,
+//             record.currency,
+//             totalPaymentFC,
+//             totalPaymentPKRFormula
+//         ];
+
+//         sheet.appendRow(newRow);
+
+//         return { status: 'success', message: 'Payment record added successfully.' };
+//     } catch (e) {
+//         return { status: 'error', message: e.toString() };
+//     }
+// }
+
 function addPaymentRecord(record) {
     try {
         var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
         var sheet = ss.getSheetByName('Payments');
-        if (!sheet) {
-            throw new Error("Sheet 'Payments' not found.");
+        var dashboardSheet = ss.getSheetByName('Dashboard');
+
+        if (!sheet || !dashboardSheet) {
+            throw new Error("One or more required sheets are missing.");
         }
 
-        // Get the foreign currency amount and selected currency.
         var totalPaymentFC = parseFloat(record.totalPaymentFC) || 0;
-        var currency = record.currency.toUpperCase();
+        var totalPaymentPKR = parseFloat(record.totalPaymentPKR) || 0; // ✅ Manually inputted by user
 
-        // Build the formula for "Total Payment Received PKR" (Column J).
-        var totalPaymentPKRFormula = "";
-        if (currency === "PKR") {
-            totalPaymentPKRFormula = "=" + totalPaymentFC + "*1";
-        } else {
-            totalPaymentPKRFormula = "=" + totalPaymentFC + "*GOOGLEFINANCE(\"CURRENCY:" + currency + "PKR\")";
-        }
-
-        // Build the new row array matching the sheet columns:
-        // 1. Invoice Number  
-        // 2. Date of Invoice  
-        // 3. Date of Payment  
-        // 4. Client Name  
-        // 5. Job Description  
-        // 6. Payment Account  
-        // 7. Payment Status  
-        // 8. Currency  
-        // 9. Total Payment Received F.C  
-        // 10. Total Payment Received PKR (formula)
+        // New row for payments
         var newRow = [
             record.invoiceNumber,
             record.invoiceDate,
@@ -89,16 +143,25 @@ function addPaymentRecord(record) {
             record.paymentStatus,
             record.currency,
             totalPaymentFC,
-            totalPaymentPKRFormula
+            totalPaymentPKR // ✅ No more formula-based conversion
         ];
 
         sheet.appendRow(newRow);
+
+        // ✅ If Payment Status is "Received", add to Running Total
+        if (record.paymentStatus.toLowerCase() === "received") {
+            var runningTotalCell = dashboardSheet.getRange("B2"); // Running Total (B2)
+            var currentRunningTotal = parseFloat(runningTotalCell.getValue()) || 0;
+            var newRunningTotal = currentRunningTotal + totalPaymentPKR;
+            runningTotalCell.setValue(newRunningTotal);
+        }
 
         return { status: 'success', message: 'Payment record added successfully.' };
     } catch (e) {
         return { status: 'error', message: e.toString() };
     }
 }
+
 
 
 /**
@@ -367,6 +430,55 @@ function getPaymentsSheetData() {
  *
  * Payment Status will be forced to "Received" when updating.
  */
+// function updatePaymentRecord(record) {
+//     try {
+//         var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+//         var sheet = ss.getSheetByName('Payments');
+//         var dashboardSheet = ss.getSheetByName('Dashboard');
+
+//         if (!sheet || !dashboardSheet) {
+//             throw new Error("One or more required sheets are missing.");
+//         }
+
+//         // Read all rows to locate the record by invoice number.
+//         var data = sheet.getDataRange().getValues();
+//         var rowToUpdate = -1;
+//         var totalPaymentPKR = 0;
+
+//         for (var i = 1; i < data.length; i++) {
+//             if (String(data[i][0]).trim() === String(record.invoiceNumber).trim()) {
+//                 rowToUpdate = i + 1; // Convert array index to sheet row number
+//                 totalPaymentPKR = parseFloat(data[i][9]) || 0; // Column J: Total Payment Received PKR
+//                 break;
+//             }
+//         }
+
+//         if (rowToUpdate === -1) {
+//             throw new Error("Invoice number " + record.invoiceNumber + " not found.");
+//         }
+
+//         // Update Payment Status to "Received" (Column G)
+//         sheet.getRange(rowToUpdate, 7).setValue("Received");
+
+//         // Update Date of Payment (Column C)
+//         sheet.getRange(rowToUpdate, 3).setValue(record.paymentDate);
+
+//         // ✅ Update Running Total in Dashboard
+//         var runningTotalCell = dashboardSheet.getRange("B2"); // Running Total (B2)
+//         var currentRunningTotal = parseFloat(runningTotalCell.getValue()) || 0;
+//         var newRunningTotal = currentRunningTotal + totalPaymentPKR;
+
+//         runningTotalCell.setValue(newRunningTotal); // ✅ Add received payment
+
+//         // ✅ Refresh Dashboard Data
+//         updateDashboard();
+
+//         return { status: 'success', message: 'Payment record updated successfully.' };
+//     } catch (e) {
+//         return { status: 'error', message: e.toString() };
+//     }
+// }
+
 function updatePaymentRecord(record) {
     try {
         var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -377,15 +489,13 @@ function updatePaymentRecord(record) {
             throw new Error("One or more required sheets are missing.");
         }
 
-        // Read all rows to locate the record by invoice number.
         var data = sheet.getDataRange().getValues();
         var rowToUpdate = -1;
-        var totalPaymentPKR = 0;
+        var totalPaymentPKR = parseFloat(record.totalPaymentPKR) || 0; // ✅ Manually inputted
 
         for (var i = 1; i < data.length; i++) {
             if (String(data[i][0]).trim() === String(record.invoiceNumber).trim()) {
                 rowToUpdate = i + 1; // Convert array index to sheet row number
-                totalPaymentPKR = parseFloat(data[i][9]) || 0; // Column J: Total Payment Received PKR
                 break;
             }
         }
@@ -394,20 +504,20 @@ function updatePaymentRecord(record) {
             throw new Error("Invoice number " + record.invoiceNumber + " not found.");
         }
 
-        // Update Payment Status to "Received" (Column G)
-        sheet.getRange(rowToUpdate, 7).setValue("Received");
+        // ✅ Update Payment Status and Date of Payment
+        sheet.getRange(rowToUpdate, 7).setValue("Received"); // Column G
+        sheet.getRange(rowToUpdate, 3).setValue(record.paymentDate); // Column C
 
-        // Update Date of Payment (Column C)
-        sheet.getRange(rowToUpdate, 3).setValue(record.paymentDate);
+        // ✅ Update Total Payment Received (PKR) manually
+        sheet.getRange(rowToUpdate, 10).setValue(totalPaymentPKR); // Column J
 
-        // ✅ Update Running Total in Dashboard
+        // ✅ Add to Running Total
         var runningTotalCell = dashboardSheet.getRange("B2"); // Running Total (B2)
         var currentRunningTotal = parseFloat(runningTotalCell.getValue()) || 0;
         var newRunningTotal = currentRunningTotal + totalPaymentPKR;
+        runningTotalCell.setValue(newRunningTotal);
 
-        runningTotalCell.setValue(newRunningTotal); // ✅ Add received payment
-
-        // ✅ Refresh Dashboard Data
+        // ✅ Refresh Dashboard
         updateDashboard();
 
         return { status: 'success', message: 'Payment record updated successfully.' };
@@ -820,5 +930,195 @@ function updateDashboard() {
         ["Partner Share (%)", partnerShare, "50%"],
         ["Partner Share Amount", partnerShareAmount, "-"]
     ]);
+}
+
+function addMonthHeadings() {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Payments'); // Adjust if needed
+
+    if (!sheet) {
+        SpreadsheetApp.getUi().alert("Sheet 'Payments' not found.");
+        return;
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastColumn = sheet.getLastColumn();
+    if (lastRow < 2) {
+        SpreadsheetApp.getUi().alert("No data found in the 'Payments' sheet.");
+        return;
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var lastMonth = "";
+    var rowsToInsert = [];
+    var monthTracker = {}; // Track first occurrence of each month
+
+    // **Step 1: Detect Where to Insert New Month Headers**
+    for (var i = 1; i < data.length; i++) { // Skip the header row
+        var dateValue = data[i][1]; // Column B (Index 1)
+        if (dateValue instanceof Date) {
+            var monthYear = Utilities.formatDate(dateValue, Session.getScriptTimeZone(), "MMMM yyyy");
+
+            // **Only store the first occurrence of each month**
+            if (!monthTracker[monthYear]) {
+                monthTracker[monthYear] = i + 1; // Store row index
+            }
+        }
+    }
+
+    // **Step 2: Insert Month Headers Before First Entry of Each Month**
+    Object.entries(monthTracker).reverse().forEach(([month, rowIndex]) => {
+        sheet.insertRowBefore(rowIndex);
+        var range = sheet.getRange(rowIndex, 1, 1, lastColumn);
+        range.merge();
+        range.setValue(month);
+        range.setFontWeight("bold").setFontSize(14).setHorizontalAlignment("center");
+        range.setBackground("#D9EAD3"); // Light green color for visibility
+    });
+
+    SpreadsheetApp.getUi().alert("Month headings added successfully!");
+}
+
+function generateMonthlySummary(selectedMonth, openingBalance) {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var paymentsSheet = ss.getSheetByName('Payments');
+    var expensesSheet = ss.getSheetByName('Expenses');
+    var employeesSheet = ss.getSheetByName('Employees');
+    var dashboardSheet = ss.getSheetByName('Dashboard');
+
+    if (!paymentsSheet || !expensesSheet || !employeesSheet || !dashboardSheet) {
+        return { status: 'error', message: "One or more required sheets are missing." };
+    }
+
+    var paymentsData = paymentsSheet.getDataRange().getValues();
+    var expensesData = expensesSheet.getDataRange().getValues();
+    var employeesData = employeesSheet.getDataRange().getValues();
+    var closingBalance = dashboardSheet.getRange("B2").getValue(); // Running Total from Dashboard
+
+    var totalPayments = 0;
+    var totalSalaries = 0;
+    var expensesByCategory = {};
+
+    // **Step 1: Process Payments**
+    for (var i = 1; i < paymentsData.length; i++) {
+        var date = paymentsData[i][1]; // Date of Invoice (Column B)
+        var status = paymentsData[i][6]; // Payment Status (Column G)
+        var amount = parseFloat(paymentsData[i][9]) || 0; // Total Payment Received PKR (Column J)
+
+        if (date instanceof Date && status === "Received") {
+            var monthYear = Utilities.formatDate(date, Session.getScriptTimeZone(), "MMMM yyyy");
+            if (monthYear === selectedMonth) {
+                totalPayments += amount;
+            }
+        }
+    }
+
+    // **Step 2: Process Expenses**
+    for (var i = 1; i < expensesData.length; i++) {
+        var date = expensesData[i][0]; // Date (Column A)
+        var category = expensesData[i][2]; // Category (Column C)
+        var amount = parseFloat(expensesData[i][3]) || 0; // Amount (Column D)
+        var status = expensesData[i][4]; // Status (Column E)
+
+        if (date instanceof Date && status === "Paid") {
+            var monthYear = Utilities.formatDate(date, Session.getScriptTimeZone(), "MMMM yyyy");
+            if (monthYear === selectedMonth) {
+                if (!expensesByCategory[category]) {
+                    expensesByCategory[category] = 0;
+                }
+                expensesByCategory[category] += amount;
+            }
+        }
+    }
+
+    // **Step 3: Process Salaries**
+    for (var i = 1; i < employeesData.length; i++) {
+        var dateJoined = employeesData[i][3]; // Date Joined (Column D)
+        var salary = parseFloat(employeesData[i][1]) || 0; // Salary (Column B)
+        var status = employeesData[i][5]; // Salary Received (Column F)
+
+        if (dateJoined instanceof Date && status === "Received") {
+            var monthYear = Utilities.formatDate(dateJoined, Session.getScriptTimeZone(), "MMMM yyyy");
+            if (monthYear === selectedMonth) {
+                totalSalaries += salary;
+            }
+        }
+    }
+
+    var totalExpenses = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
+    var columnOffset = 5; // Column E (Index 5)
+
+    // **Step 4: Append the Monthly Summary to Dashboard**
+    var lastDashboardRow = dashboardSheet.getLastRow() + 1;
+
+    // **Beautification: Merge & Style the Month Header**
+    var monthTitleRange = dashboardSheet.getRange(lastDashboardRow, columnOffset, 1, 2);
+    monthTitleRange.merge();
+    monthTitleRange.setValue(selectedMonth);
+    monthTitleRange.setFontWeight("bold").setFontSize(14).setHorizontalAlignment("center");
+    monthTitleRange.setBackground("#4CAF50").setFontColor("white"); // Green Background
+
+    var row = lastDashboardRow + 1;
+
+    // **Beautify Each Row**
+    function addRow(label, value, backgroundColor = "#F1F1F1", bold = false) {
+        dashboardSheet.getRange(row, columnOffset).setValue(label);
+        dashboardSheet.getRange(row, columnOffset + 1).setValue(value);
+        dashboardSheet.getRange(row, columnOffset, 1, 2).setBackground(backgroundColor);
+        if (bold) {
+            dashboardSheet.getRange(row, columnOffset, 1, 2).setFontWeight("bold");
+        }
+        row++;
+    }
+
+    addRow("Opening Balance", openingBalance, "#D9EAD3", true); // Light Green
+    addRow("Total Payments Received", totalPayments, "#FFF2CC", true); // Light Yellow
+    addRow("Total Salaries Paid", totalSalaries, "#FFEBEE", true); // Light Red
+
+    // **Add Expenses with Categorization**
+    if (Object.keys(expensesByCategory).length > 0) {
+        addRow("Expenses", "", "#BBDEFB", true); // Light Blue Header for Expenses
+        for (var category in expensesByCategory) {
+            addRow(" - " + category, expensesByCategory[category], "#E3F2FD"); // Light Blue Shade for Expenses
+        }
+    }
+
+    addRow("Closing Balance (Running Total)", closingBalance, "#C8E6C9", true); // Light Green
+    addRow("", "", "white"); // Empty Row for Spacing
+
+    return { status: 'success', message: "Summary for " + selectedMonth + " added to Dashboard." };
+}
+
+
+
+
+function getAvailableMonths() {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var paymentsSheet = ss.getSheetByName('Payments');
+    var expensesSheet = ss.getSheetByName('Expenses');
+
+    if (!paymentsSheet || !expensesSheet) {
+        return [];
+    }
+
+    var paymentsData = paymentsSheet.getDataRange().getValues();
+    var expensesData = expensesSheet.getDataRange().getValues();
+    var months = new Set();
+
+    for (var i = 1; i < paymentsData.length; i++) {
+        var date = paymentsData[i][1];
+        if (date instanceof Date) {
+            months.add(Utilities.formatDate(date, Session.getScriptTimeZone(), "MMMM yyyy"));
+        }
+    }
+
+    for (var i = 1; i < expensesData.length; i++) {
+        var date = expensesData[i][0];
+        if (date instanceof Date) {
+            months.add(Utilities.formatDate(date, Session.getScriptTimeZone(), "MMMM yyyy"));
+        }
+    }
+
+    return Array.from(months).sort();
 }
 

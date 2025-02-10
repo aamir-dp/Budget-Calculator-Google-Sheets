@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 4px;
+            margin-top: 4px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Generate Monthly Summary</h2>
+
+    <label>Select Month:
+        <select id="monthSelect">
+            <option value="">--Select Month--</option>
+        </select>
+    </label>
+
+    <label>Opening Balance:
+        <input type="number" id="openingBalance" step="any" required>
+    </label>
+
+    <button id="submitBtn">Generate Summary</button>
+
+    <script>
+        function loadAvailableMonths() {
+            google.script.run.withSuccessHandler(function (months) {
+                var select = document.getElementById('monthSelect');
+                select.innerHTML = '<option value="">--Select Month--</option>';
+                months.forEach(function (month) {
+                    var opt = document.createElement('option');
+                    opt.value = month;
+                    opt.text = month;
+                    select.add(opt);
+                });
+            }).getAvailableMonths();
+        }
+
+        loadAvailableMonths();
+
+        document.getElementById('submitBtn').addEventListener('click', function () {
+            var selectedMonth = document.getElementById('monthSelect').value;
+            var openingBalance = parseFloat(document.getElementById('openingBalance').value) || 0;
+
+            if (!selectedMonth) {
+                alert("Please select a month.");
+                return;
+            }
+
+            google.script.run.withSuccessHandler(function (response) {
+                alert(response.message);
+            }).generateMonthlySummary(selectedMonth, openingBalance);
+        });
+    </script>
+</body>
+
+</html>
